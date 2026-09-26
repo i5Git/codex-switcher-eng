@@ -211,7 +211,7 @@ export const enBatch2 = [
   ['失效（约 30 天）后账号会变成不可用， 需要重新粘贴一次新 session。Plus 账号能正常调用模型，Free 账号即使导入也无 API 权限。', 'After expiration (about 30 days), the account becomes unusable and you must paste a fresh session. Plus accounts can call models normally; Free accounts have no API permission even if imported.'],
   ['）粘贴到下方：', ' ) paste below: '],
   ['选一个', 'Choose one '],
-  ['，base URL 自动填好，下一步只用粘 API Key。\\n                需要在多家 Coding Plan 之间切换额度的话，可以把同一个服务添加多次（用账号名区分）。\\n                也支持', '; Base URL will be filled automatically, then paste only the API Key on the next step.\\nNeed to switch quota between multiple Coding Plans? Add the same service multiple times and distinguish them by account name.\\nAlso supports '],
+  ['，base URL 自动填好，下一步只用粘 API Key。\n                需要在多家 Coding Plan 之间切换额度的话，可以把同一个服务添加多次（用账号名区分）。\n                也支持', '; Base URL will be filled automatically, then paste only the API Key on the next step.\nNeed to switch quota between multiple Coding Plans? Add the same service multiple times and distinguish them by account name.\nAlso supports '],
   ['切换服务', 'Switch service'],
   ['前缀', 'Prefix'],
   ['API 地址（可修改）', 'API address (editable)'],
