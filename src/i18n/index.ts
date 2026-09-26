@@ -1,3 +1,4 @@
+import { englishLocale } from './en';
 import { russianLocale } from './ru';
 import { installUiLocale, type UiLocale } from './runtime';
 
@@ -24,6 +25,16 @@ export const appLocales: readonly AppLocaleDefinition[] = [
     languagePrefixes: ['zh'],
     nativeName: '中文',
     flag: '🇨🇳',
+  },
+  {
+    code: 'en',
+    languagePrefixes: ['en'],
+    nativeName: 'English',
+    flag: '🇺🇸',
+    translation: englishLocale,
+    contributors: [
+      { name: 'i5Git', url: 'https://github.com/i5Git' },
+    ],
   },
   {
     code: 'ru',
