@@ -17,6 +17,7 @@ export interface LocaleContributor {
 }
 
 export const SOURCE_LOCALE_CODE = 'zh-CN';
+export const DEFAULT_LOCALE_CODE = 'en';
 export const AUTO_LOCALE = 'auto';
 
 export const appLocales: readonly AppLocaleDefinition[] = [
@@ -52,7 +53,7 @@ export type AppLocaleCode = string;
 export type LocalePreference = typeof AUTO_LOCALE | AppLocaleCode;
 
 const localePreferenceKey = 'codex-switcher.locale';
-let activeLocaleCode = SOURCE_LOCALE_CODE;
+let activeLocaleCode = DEFAULT_LOCALE_CODE;
 
 function requestedLocale(): string {
   return (navigator.language || SOURCE_LOCALE_CODE).toLowerCase();
@@ -73,7 +74,7 @@ export function resolveAppLocale(
   const normalized = language.toLowerCase();
   return appLocales.find(locale => (
     locale.languagePrefixes.some(prefix => normalized.startsWith(prefix.toLowerCase()))
-  ))?.code ?? SOURCE_LOCALE_CODE;
+  ))?.code ?? DEFAULT_LOCALE_CODE;
 }
 
 export function getLocalePreference(): LocalePreference {
@@ -95,7 +96,7 @@ export function getActiveLocale(): AppLocaleDefinition {
   return findLocale(activeLocaleCode) ?? appLocales[0];
 }
 
-// Chinese remains the source language and the fallback for unsupported locales.
+// Chinese remains the maintainable source language; English is this fork's default fallback.
 export function installAppLocale(systemLocale?: string): AppLocaleCode {
   activeLocaleCode = resolveAppLocale(systemLocale ?? requestedLocale(), getLocalePreference());
   const locale = getActiveLocale();

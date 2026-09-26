@@ -85,7 +85,7 @@ fn active_locale() -> &'static dyn BackendLocale {
                 .any(|prefix| language.starts_with(prefix))
         })
         .map(|entry| entry.locale)
-        .unwrap_or(&CHINESE_LOCALE)
+        .unwrap_or(&ENGLISH_LOCALE)
 }
 
 #[tauri::command]
