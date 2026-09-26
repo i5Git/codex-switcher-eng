@@ -10,16 +10,19 @@ import { enBatch7 } from './en_batch7';
 
 type Replacement = readonly [source: string, target: string];
 
-const replacements: Replacement[] = [
-  ...enBatch1,
-  ...enBatch2,
-  ...enBatch3,
-  ...enBatch4a,
-  ...enBatch4b,
-  ...enBatch5,
-  ...enBatch6,
-  ...enBatch7,
+const batches: readonly (readonly Replacement[])[] = [
+  enBatch1 as unknown as readonly Replacement[],
+  enBatch2 as unknown as readonly Replacement[],
+  enBatch3 as unknown as readonly Replacement[],
+  enBatch4a as unknown as readonly Replacement[],
+  enBatch4b as unknown as readonly Replacement[],
+  enBatch5 as unknown as readonly Replacement[],
+  enBatch6 as unknown as readonly Replacement[],
+  enBatch7 as unknown as readonly Replacement[],
 ];
+
+const replacements: Replacement[] = [];
+for (const batch of batches) replacements.push(...batch);
 
 const sortedReplacements = [...replacements].sort((a, b) => b[0].length - a[0].length);
 const exactReplacements = new Map(replacements);
