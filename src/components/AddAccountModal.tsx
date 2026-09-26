@@ -838,33 +838,38 @@ export function AddAccountModal({ isOpen, onClose, onAdd, onSuccess }: AddAccoun
                             <div className="oauth-icon">◆</div>
                             <h3 style={{ marginBottom: '8px', color: 'var(--text-primary)' }}>Google Antigravity OAuth</h3>
                             <p className="oauth-desc">
-                                Sign in with Google in your browser. Self-built forks can enter the Google OAuth client
-                                credentials here; they stay local and are saved with the Antigravity account for token refresh.
+                                Sign in with Google in your browser. If Antigravity.app is installed, Codex Switcher
+                                automatically discovers its installed-app OAuth client, so no manual setup is needed.
                             </p>
-                            <div className="form-group" style={{ textAlign: 'left', marginBottom: 10 }}>
-                                <label htmlFor="google-client-id">Google OAuth Client ID</label>
-                                <input
-                                    id="google-client-id"
-                                    type="text"
-                                    value={googleClientId}
-                                    onChange={e => setGoogleClientId(e.target.value)}
-                                    placeholder="...apps.googleusercontent.com"
-                                    disabled={loading}
-                                    autoComplete="off"
-                                />
-                            </div>
-                            <div className="form-group" style={{ textAlign: 'left', marginBottom: 12 }}>
-                                <label htmlFor="google-client-secret">Google OAuth Client Secret</label>
-                                <input
-                                    id="google-client-secret"
-                                    type="password"
-                                    value={googleClientSecret}
-                                    onChange={e => setGoogleClientSecret(e.target.value)}
-                                    placeholder="GOCSPX-..."
-                                    disabled={loading}
-                                    autoComplete="off"
-                                />
-                            </div>
+                            <details style={{ textAlign: 'left', marginBottom: 12 }}>
+                                <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 12.5 }}>
+                                    Advanced: use a custom Google OAuth client
+                                </summary>
+                                <div className="form-group" style={{ marginTop: 10, marginBottom: 10 }}>
+                                    <label htmlFor="google-client-id">Google OAuth Client ID</label>
+                                    <input
+                                        id="google-client-id"
+                                        type="text"
+                                        value={googleClientId}
+                                        onChange={e => setGoogleClientId(e.target.value)}
+                                        placeholder="...apps.googleusercontent.com"
+                                        disabled={loading}
+                                        autoComplete="off"
+                                    />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 4 }}>
+                                    <label htmlFor="google-client-secret">Google OAuth Client Secret</label>
+                                    <input
+                                        id="google-client-secret"
+                                        type="password"
+                                        value={googleClientSecret}
+                                        onChange={e => setGoogleClientSecret(e.target.value)}
+                                        placeholder="GOCSPX-..."
+                                        disabled={loading}
+                                        autoComplete="off"
+                                    />
+                                </div>
+                            </details>
                             <button
                                 className="btn btn-primary btn-full"
                                 style={{ padding: '14px' }}
