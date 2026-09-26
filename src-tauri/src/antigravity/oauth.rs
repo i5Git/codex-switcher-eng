@@ -71,17 +71,32 @@ impl OAuthClientConfig {
             roots.push(std::path::PathBuf::from(home).join("Applications/Antigravity.app"));
         }
 
-        const RELATIVE_ARTIFACTS: &[&str] = &[
-            "Contents/Resources/app/out/main.js",
-            "Contents/Resources/app/extensions/antigravity/bin/language_server_macos_x64",
-            "Contents/Resources/app/extensions/antigravity/bin/language_server_macos_arm",
-            "Contents/Resources/app/extensions/antigravity/bin/language_server_macos",
-            "Contents/Resources/bin/language_server",
-            "Contents/Resources/bin/language_server_macos",
-        ];
+        // Prefer the architecture-matched language server first. It contains
+        // the active OAuth client used by the installed Antigravity build.
+        // main.js can contain unrelated/stale Google OAuth clients too, so it
+        // is only a fallback and is parsed around the Cloud Code marker.
+        let relative_artifacts: &[&str] = if cfg!(target_arch = "x86_64") {
+            &[
+                "Contents/Resources/app/extensions/antigravity/bin/language_server_macos_x64",
+                "Contents/Resources/app/extensions/antigravity/bin/language_server_macos",
+                "Contents/Resources/bin/language_server_macos",
+                "Contents/Resources/bin/language_server",
+                "Contents/Resources/app/out/main.js",
+                "Contents/Resources/app/extensions/antigravity/bin/language_server_macos_arm",
+            ]
+        } else {
+            &[
+                "Contents/Resources/app/extensions/antigravity/bin/language_server_macos_arm",
+                "Contents/Resources/app/extensions/antigravity/bin/language_server_macos",
+                "Contents/Resources/bin/language_server_macos",
+                "Contents/Resources/bin/language_server",
+                "Contents/Resources/app/out/main.js",
+                "Contents/Resources/app/extensions/antigravity/bin/language_server_macos_x64",
+            ]
+        };
 
         for root in roots {
-            for relative in RELATIVE_ARTIFACTS {
+            for relative in relative_artifacts {
                 let path = root.join(relative);
                 let Ok(data) = std::fs::read(&path) else {
                     continue;
@@ -95,6 +110,25 @@ impl OAuthClientConfig {
     }
 
     fn parse_installed_artifact(data: &[u8]) -> Option<Self> {
+        // Electron's main.js may contain several Google clients. Antigravity's
+        // real Cloud Code client is located near this module marker, so inspect
+        // that window first instead of taking the first OAuth-looking value in
+        // the whole bundle.
+        const OAUTH_MARKER: &[u8] = b"vs/platform/cloudCode/common/oauthClient.js";
+        if let Some(marker_start) = find_subslice(data, OAUTH_MARKER) {
+            let end = marker_start.saturating_add(12_000).min(data.len());
+            if let Some(config) = Self::parse_oauth_client_candidates(&data[marker_start..end]) {
+                return Some(config);
+            }
+        }
+
+        // Native language_server binaries do not necessarily contain the
+        // JavaScript marker. For them, use the same pairing heuristic as the
+        // known-good Antigravity integrations.
+        Self::parse_oauth_client_candidates(data)
+    }
+
+    fn parse_oauth_client_candidates(data: &[u8]) -> Option<Self> {
         let client_ids = find_ascii_values_ending_with(
             data,
             b".apps.googleusercontent.com",
@@ -127,6 +161,13 @@ impl OAuthClientConfig {
         }
         Ok(())
     }
+}
+
+fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    if needle.is_empty() || needle.len() > haystack.len() {
+        return None;
+    }
+    haystack.windows(needle.len()).position(|window| window == needle)
 }
 
 fn is_oauth_client_byte(byte: u8) -> bool {
@@ -476,6 +517,20 @@ mod tests {
         );
         assert_eq!(query.get("prompt").map(String::as_str), Some("consent"));
         assert!(query.get("scope").unwrap().contains("cloud-platform"));
+    }
+
+    #[test]
+    fn prefers_cloud_code_marker_client_over_unrelated_google_client() {
+        let wrong_id = format!("{}{}", "111111-wrong.apps.", "googleusercontent.com");
+        let right_id = format!("{}{}", "222222-correct.apps.", "googleusercontent.com");
+        let wrong_secret = format!("{}{}", "GOCSP", "X-aaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        let right_secret = format!("{}{}", "GOCSP", "X-bbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+        let artifact = format!(
+            "{wrong_id} {wrong_secret} prefix vs/platform/cloudCode/common/oauthClient.js {right_id} {right_secret}"
+        );
+        let config = OAuthClientConfig::parse_installed_artifact(artifact.as_bytes()).unwrap();
+        assert_eq!(config.client_id, right_id);
+        assert_eq!(config.client_secret, right_secret);
     }
 
     #[test]
