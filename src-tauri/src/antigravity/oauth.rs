@@ -36,45 +36,167 @@ impl OAuthClientConfig {
     }
 
     pub fn from_optional(client_id: Option<String>, client_secret: Option<String>) -> Self {
-        let fallback = Self::from_environment();
-        Self {
-            client_id: client_id
-                .filter(|value| !value.trim().is_empty())
-                .unwrap_or(fallback.client_id),
-            client_secret: client_secret
-                .filter(|value| !value.trim().is_empty())
-                .unwrap_or(fallback.client_secret),
+        let explicit_id = client_id.filter(|value| !value.trim().is_empty());
+        let explicit_secret = client_secret.filter(|value| !value.trim().is_empty());
+        match (explicit_id, explicit_secret) {
+            (Some(client_id), Some(client_secret)) => Self::new(client_id, client_secret),
+            _ => Self::from_environment(),
         }
     }
 
     pub fn from_environment() -> Self {
-        Self {
-            client_id: std::env::var("CODEX_SWITCHER_ANTIGRAVITY_CLIENT_ID")
-                .ok()
-                .filter(|value| !value.trim().is_empty())
-                .or_else(|| {
-                    option_env!("CODEX_SWITCHER_ANTIGRAVITY_CLIENT_ID").map(ToOwned::to_owned)
-                })
-                .unwrap_or_default(),
-            client_secret: std::env::var("CODEX_SWITCHER_ANTIGRAVITY_CLIENT_SECRET")
-                .ok()
-                .filter(|value| !value.trim().is_empty())
-                .or_else(|| {
-                    option_env!("CODEX_SWITCHER_ANTIGRAVITY_CLIENT_SECRET").map(ToOwned::to_owned)
-                })
-                .unwrap_or_default(),
+        let env_id = std::env::var("CODEX_SWITCHER_ANTIGRAVITY_CLIENT_ID")
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+            .or_else(|| {
+                option_env!("CODEX_SWITCHER_ANTIGRAVITY_CLIENT_ID").map(ToOwned::to_owned)
+            });
+        let env_secret = std::env::var("CODEX_SWITCHER_ANTIGRAVITY_CLIENT_SECRET")
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+            .or_else(|| {
+                option_env!("CODEX_SWITCHER_ANTIGRAVITY_CLIENT_SECRET").map(ToOwned::to_owned)
+            });
+
+        if let (Some(client_id), Some(client_secret)) = (env_id, env_secret) {
+            return Self::new(client_id, client_secret);
         }
+
+        Self::discover_from_installed_antigravity().unwrap_or_else(|| Self::new(String::new(), String::new()))
+    }
+
+    fn discover_from_installed_antigravity() -> Option<Self> {
+        let mut roots = vec![std::path::PathBuf::from("/Applications/Antigravity.app")];
+        if let Ok(home) = std::env::var("HOME") {
+            roots.push(std::path::PathBuf::from(home).join("Applications/Antigravity.app"));
+        }
+
+        const RELATIVE_ARTIFACTS: &[&str] = &[
+            "Contents/Resources/app/out/main.js",
+            "Contents/Resources/app/extensions/antigravity/bin/language_server_macos_x64",
+            "Contents/Resources/app/extensions/antigravity/bin/language_server_macos_arm",
+            "Contents/Resources/app/extensions/antigravity/bin/language_server_macos",
+            "Contents/Resources/bin/language_server",
+            "Contents/Resources/bin/language_server_macos",
+        ];
+
+        for root in roots {
+            for relative in RELATIVE_ARTIFACTS {
+                let path = root.join(relative);
+                let Ok(data) = std::fs::read(&path) else {
+                    continue;
+                };
+                if let Some(config) = Self::parse_installed_artifact(&data) {
+                    return Some(config);
+                }
+            }
+        }
+        None
+    }
+
+    fn parse_installed_artifact(data: &[u8]) -> Option<Self> {
+        let client_ids = find_ascii_values_ending_with(
+            data,
+            b".apps.googleusercontent.com",
+            is_oauth_client_byte,
+        );
+        let client_secrets = find_fixed_ascii_values(data, b"GOCSPX-", 35, is_oauth_client_byte);
+        if client_ids.is_empty() || client_secrets.is_empty() {
+            return None;
+        }
+
+        let client_id = if client_secrets.len() == 1 && client_ids.len() > 1 {
+            client_ids.last()?.clone()
+        } else {
+            client_ids.first()?.clone()
+        };
+        let client_secret = if client_secrets.len() == client_ids.len() && client_secrets.len() > 1 {
+            client_secrets.last()?.clone()
+        } else {
+            client_secrets.first()?.clone()
+        };
+        Some(Self::new(client_id, client_secret))
     }
 
     fn validate(&self) -> Result<(), String> {
         if self.client_id.trim().is_empty() || self.client_secret.trim().is_empty() {
             return Err(
-                "Google OAuth client is not configured; set CODEX_SWITCHER_ANTIGRAVITY_CLIENT_ID and CODEX_SWITCHER_ANTIGRAVITY_CLIENT_SECRET"
+                "Google OAuth client is not configured. Install Antigravity.app, enter a Google OAuth client ID/secret in this dialog, or set CODEX_SWITCHER_ANTIGRAVITY_CLIENT_ID and CODEX_SWITCHER_ANTIGRAVITY_CLIENT_SECRET."
                     .to_string(),
             );
         }
         Ok(())
     }
+}
+
+fn is_oauth_client_byte(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_'
+}
+
+fn find_ascii_values_ending_with(
+    data: &[u8],
+    suffix: &[u8],
+    allowed_prefix_byte: fn(u8) -> bool,
+) -> Vec<String> {
+    let mut values = Vec::new();
+    let mut offset = 0usize;
+    while offset + suffix.len() <= data.len() {
+        let Some(found) = data[offset..]
+            .windows(suffix.len())
+            .position(|window| window == suffix)
+        else {
+            break;
+        };
+        let suffix_start = offset + found;
+        let mut start = suffix_start;
+        while start > 0 && allowed_prefix_byte(data[start - 1]) {
+            start -= 1;
+        }
+        let end = suffix_start + suffix.len();
+        if let Ok(value) = std::str::from_utf8(&data[start..end]) {
+            if value.contains('-') && value.ends_with(".apps.googleusercontent.com") {
+                if !values.iter().any(|existing| existing == value) {
+                    values.push(value.to_string());
+                }
+            }
+        }
+        offset = end;
+    }
+    values
+}
+
+fn find_fixed_ascii_values(
+    data: &[u8],
+    prefix: &[u8],
+    total_len: usize,
+    allowed_byte: fn(u8) -> bool,
+) -> Vec<String> {
+    let mut values = Vec::new();
+    let mut offset = 0usize;
+    while offset + prefix.len() <= data.len() {
+        let Some(found) = data[offset..]
+            .windows(prefix.len())
+            .position(|window| window == prefix)
+        else {
+            break;
+        };
+        let start = offset + found;
+        let end = start.saturating_add(total_len);
+        if end <= data.len()
+            && data[start + prefix.len()..end]
+                .iter()
+                .copied()
+                .all(allowed_byte)
+        {
+            if let Ok(value) = std::str::from_utf8(&data[start..end]) {
+                if !values.iter().any(|existing| existing == value) {
+                    values.push(value.to_string());
+                }
+            }
+        }
+        offset = start + prefix.len();
+    }
+    values
 }
 
 #[derive(Debug, Clone, Deserialize)]
