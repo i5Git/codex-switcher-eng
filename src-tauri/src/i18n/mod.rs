@@ -1,7 +1,9 @@
+mod en;
 mod ru;
 #[allow(dead_code)]
 mod zh_cn;
 
+use en::EnglishLocale;
 use ru::RussianLocale;
 use std::sync::RwLock;
 use zh_cn::ChineseLocale;
@@ -30,6 +32,7 @@ trait BackendLocale: Sync {
     fn referral_no_available_campaign(&self) -> &'static str;
 }
 
+const ENGLISH_LOCALE: EnglishLocale = EnglishLocale;
 const RUSSIAN_LOCALE: RussianLocale = RussianLocale;
 const CHINESE_LOCALE: ChineseLocale = ChineseLocale;
 
@@ -44,6 +47,11 @@ static BACKEND_LOCALES: &[BackendLocaleDefinition] = &[
         code: "zh-CN",
         language_prefixes: &["zh"],
         locale: &CHINESE_LOCALE,
+    },
+    BackendLocaleDefinition {
+        code: "en",
+        language_prefixes: &["en"],
+        locale: &ENGLISH_LOCALE,
     },
     BackendLocaleDefinition {
         code: "ru",
