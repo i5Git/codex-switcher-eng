@@ -15,6 +15,7 @@ const batchFiles = [
 
 const pairRe = /^\s*\['((?:\\.|[^'\\])*)',\s*'((?:\\.|[^'\\])*)'\],?\s*$/gm;
 const cjk = /[\u3400-\u9fff]/u;
+const cyrillic = /\p{Script=Cyrillic}/u;
 
 function unescapeLiteral(value) {
   return value
