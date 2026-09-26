@@ -29,7 +29,7 @@ const normalizedExactReplacements = new Map(
   replacements.map(([source, target]) => [normalizeWhitespace(source), target]),
 );
 const placeholderRe = /\{[^{}]*\}/g;
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\const escapeRegExp = (value: string) => value.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&');');
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const dynamicReplacements = replacements
   .filter(([source]) => /\{[^{}]*\}/.test(source))
   .sort((a, b) => b[0].length - a[0].length)
