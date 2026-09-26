@@ -812,6 +812,8 @@ struct AntigravityRoute {
     refresh_token: Option<String>,
     project_id: String,
     expires_at: Option<chrono::DateTime<Utc>>,
+    oauth_client_id: Option<String>,
+    oauth_client_secret: Option<String>,
 }
 
 fn request_model(body: &[u8]) -> Option<String> {
@@ -918,6 +920,16 @@ fn antigravity_routes_from_store(store: &AccountStore, model_id: &str) -> Vec<An
                         .and_then(serde_json::Value::as_str)
                         .and_then(|raw| chrono::DateTime::parse_from_rfc3339(raw).ok())
                         .map(|value| value.with_timezone(&Utc)),
+                    oauth_client_id: account
+                        .auth_json
+                        .pointer("/oauth_client/client_id")
+                        .and_then(serde_json::Value::as_str)
+                        .map(ToOwned::to_owned),
+                    oauth_client_secret: account
+                        .auth_json
+                        .pointer("/oauth_client/client_secret")
+                        .and_then(serde_json::Value::as_str)
+                        .map(ToOwned::to_owned),
                 },
             ))
         })
@@ -1051,7 +1063,10 @@ async fn refresh_antigravity_route_if_needed(
         .refresh_token
         .as_deref()
         .ok_or_else(|| "Antigravity account has no refresh token".to_string())?;
-    let config = crate::antigravity::oauth::OAuthClientConfig::from_environment();
+    let config = crate::antigravity::oauth::OAuthClientConfig::from_optional(
+        route.oauth_client_id.clone(),
+        route.oauth_client_secret.clone(),
+    );
     let tokens =
         crate::antigravity::oauth::refresh_access_token(&state.client, &config, refresh_token)
             .await?;

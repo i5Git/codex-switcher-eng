@@ -14,6 +14,7 @@ const CALLBACK_PATH: &str = "/oauth-callback";
 
 struct PendingLogin {
     redirect_uri: String,
+    config: OAuthClientConfig,
 }
 
 static PENDING_LOGIN: OnceLock<Mutex<Option<PendingLogin>>> = OnceLock::new();
@@ -37,6 +38,8 @@ fn generate_state() -> String {
 pub async fn start_antigravity_oauth_login(
     app_handle: AppHandle,
     open_browser: Option<bool>,
+    client_id: Option<String>,
+    client_secret: Option<String>,
 ) -> Result<String, String> {
     if let Ok(mut slot) = callback_task().lock() {
         if let Some(task) = slot.take() {
@@ -50,11 +53,11 @@ pub async fn start_antigravity_oauth_login(
         .map_err(|e| format!("无法绑定 Antigravity OAuth 回调端口 {CALLBACK_PORT}: {e}"))?;
     let redirect_uri = format!("http://localhost:{CALLBACK_PORT}{CALLBACK_PATH}");
     let state = generate_state();
-    let config = OAuthClientConfig::from_environment();
+    let config = OAuthClientConfig::from_optional(client_id, client_secret);
     let auth_url = oauth::build_authorize_url(&config, &redirect_uri, &state)?;
 
     *pending_login().lock().map_err(|_| "登录流程状态锁异常")? =
-        Some(PendingLogin { redirect_uri });
+        Some(PendingLogin { redirect_uri, config });
 
     let app = app_handle.clone();
     let handle = tokio::spawn(async move {
@@ -110,23 +113,31 @@ fn extract_code(request: &str, expected_state: &str) -> Option<String> {
     (query.get("state")?.as_str() == expected_state).then(|| query.get("code").cloned())?
 }
 
-pub async fn complete_oauth_login(code: String) -> Result<AntigravityCredential, String> {
-    let redirect_uri = take_pending_redirect_uri()?;
-    let config = OAuthClientConfig::from_environment();
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(45))
-        .build()
-        .map_err(|e| e.to_string())?;
-    oauth::complete_credential(&client, &config, &code, &redirect_uri).await
-}
-
-pub fn take_pending_redirect_uri() -> Result<String, String> {
+fn take_pending_login() -> Result<PendingLogin, String> {
     pending_login()
         .lock()
         .map_err(|_| "登录流程状态锁异常")?
         .take()
-        .map(|pending| pending.redirect_uri)
         .ok_or_else(|| "Antigravity 登录流程已过期或未启动".to_string())
+}
+
+pub async fn complete_oauth_login(code: String) -> Result<AntigravityCredential, String> {
+    let pending = take_pending_login()?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(45))
+        .build()
+        .map_err(|e| e.to_string())?;
+    oauth::complete_credential(
+        &client,
+        &pending.config,
+        &code,
+        &pending.redirect_uri,
+    )
+    .await
+}
+
+pub fn take_pending_redirect_uri() -> Result<String, String> {
+    take_pending_login().map(|pending| pending.redirect_uri)
 }
 
 #[cfg(test)]

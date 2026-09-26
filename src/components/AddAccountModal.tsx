@@ -86,6 +86,8 @@ export function AddAccountModal({ isOpen, onClose, onAdd, onSuccess }: AddAccoun
     const [authLink, setAuthLink] = useState<{ url: string; provider: 'openai' | 'google' } | null>(null);
     const [copyingLink, setCopyingLink] = useState(false);
     const [linkCopyError, setLinkCopyError] = useState<string | null>(null);
+    const [googleClientId, setGoogleClientId] = useState('');
+    const [googleClientSecret, setGoogleClientSecret] = useState('');
     const linkGeneration = useRef(0);
 
     useEffect(() => {
@@ -331,7 +333,11 @@ export function AddAccountModal({ isOpen, onClose, onAdd, onSuccess }: AddAccoun
         try {
             const url = provider === 'openai'
                 ? await startOAuthLogin(false)
-                : await invoke<string>('start_antigravity_oauth_login', { openBrowser: false });
+                : await invoke<string>('start_antigravity_oauth_login', {
+                    openBrowser: false,
+                    clientId: googleClientId.trim() || null,
+                    clientSecret: googleClientSecret.trim() || null,
+                });
             if (generation !== linkGeneration.current) return;
             setAuthLink({ url, provider });
             await copyPreparedLink(url, generation);
@@ -350,7 +356,11 @@ export function AddAccountModal({ isOpen, onClose, onAdd, onSuccess }: AddAccoun
         setError(null);
         setOauthStatus('正在启动 Google Antigravity 授权...');
         try {
-            await invoke<string>('start_antigravity_oauth_login', { openBrowser: true });
+            await invoke<string>('start_antigravity_oauth_login', {
+                openBrowser: true,
+                clientId: googleClientId.trim() || null,
+                clientSecret: googleClientSecret.trim() || null,
+            });
             setOauthStatus('请在浏览器中完成 Google 授权...');
         } catch (err) {
             setError(String(err));
@@ -828,8 +838,38 @@ export function AddAccountModal({ isOpen, onClose, onAdd, onSuccess }: AddAccoun
                             <div className="oauth-icon">◆</div>
                             <h3 style={{ marginBottom: '8px', color: 'var(--text-primary)' }}>Google Antigravity OAuth</h3>
                             <p className="oauth-desc">
-                                授权后 Gemini 模型通过 Codex Switcher 原生路由；不会修改 Codex 的 OpenAI 登录身份。
+                                Sign in with Google in your browser. If Antigravity.app is installed, Codex Switcher
+                                automatically discovers its installed-app OAuth client, so no manual setup is needed.
                             </p>
+                            <details style={{ textAlign: 'left', marginBottom: 12 }}>
+                                <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 12.5 }}>
+                                    Advanced: use a custom Google OAuth client
+                                </summary>
+                                <div className="form-group" style={{ marginTop: 10, marginBottom: 10 }}>
+                                    <label htmlFor="google-client-id">Google OAuth Client ID</label>
+                                    <input
+                                        id="google-client-id"
+                                        type="text"
+                                        value={googleClientId}
+                                        onChange={e => setGoogleClientId(e.target.value)}
+                                        placeholder="...apps.googleusercontent.com"
+                                        disabled={loading}
+                                        autoComplete="off"
+                                    />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 4 }}>
+                                    <label htmlFor="google-client-secret">Google OAuth Client Secret</label>
+                                    <input
+                                        id="google-client-secret"
+                                        type="password"
+                                        value={googleClientSecret}
+                                        onChange={e => setGoogleClientSecret(e.target.value)}
+                                        placeholder="GOCSPX-..."
+                                        disabled={loading}
+                                        autoComplete="off"
+                                    />
+                                </div>
+                            </details>
                             <button
                                 className="btn btn-primary btn-full"
                                 style={{ padding: '14px' }}
