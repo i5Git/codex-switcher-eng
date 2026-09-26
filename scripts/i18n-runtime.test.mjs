@@ -26,6 +26,21 @@ function transpileModule(file, context = {}) {
   return loaded.exports;
 }
 
+const englishBatches = {
+  './en_batch1': transpileModule('src/i18n/en_batch1.ts'),
+  './en_batch2': transpileModule('src/i18n/en_batch2.ts'),
+  './en_batch3': transpileModule('src/i18n/en_batch3.ts'),
+  './en_batch4a': transpileModule('src/i18n/en_batch4a.ts'),
+  './en_batch4b': transpileModule('src/i18n/en_batch4b.ts'),
+  './en_batch5': transpileModule('src/i18n/en_batch5.ts'),
+  './en_batch6': transpileModule('src/i18n/en_batch6.ts'),
+  './en_batch7': transpileModule('src/i18n/en_batch7.ts'),
+};
+const { translateEn, countEnglishReplacements } = transpileModule('src/i18n/en.ts', {
+  ...englishBatches,
+  './runtime': {},
+});
+
 const { resolveAppLocale } = transpileModule('src/i18n/index.ts', {
   './en': { englishLocale: {} },
   './ru': { russianLocale: {} },
@@ -63,5 +78,28 @@ test('complete messages win over fragment replacements', () => {
   assert.equal(
     translateRu('Fast 模式已开启（2x 额度消耗，更快推理）。重启 Codex 生效。'),
     'Режим Fast включён: ответы быстрее, расход квоты удвоен. Перезапустите Codex для применения',
+  );
+});
+
+
+test('English catalog translates current UI and dynamic backend messages', () => {
+  assert.equal(countEnglishReplacements(), 1630);
+  assert.equal(translateEn('账号管理'), 'Accounts');
+  assert.equal(translateEn('Google 账号不存在'), 'Google account not found');
+  assert.equal(
+    translateEn('模型列表请求失败: timeout'),
+    'Model list request failed: timeout',
+  );
+  assert.equal(
+    translateEn('Server 不可达（primary=http://a, fallback=http://b）'),
+    'Server unreachable (primary=http://a, fallback=http://b)',
+  );
+  assert.equal(translateEn('已重置 2 个限额窗口'), 'Reset 2 quota windows');
+});
+
+test('English complete messages take precedence over fragments', () => {
+  assert.equal(
+    translateEn('Fast 模式已开启（2x 额度消耗，更快推理）。重启 Codex 生效。'),
+    'Fast mode enabled (2x quota consumption, faster reasoning). Restart Codex to apply.',
   );
 });
