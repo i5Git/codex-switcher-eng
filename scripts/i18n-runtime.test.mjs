@@ -47,14 +47,14 @@ const { resolveAppLocale } = transpileModule('src/i18n/index.ts', {
   './runtime': { installUiLocale() {} },
 });
 
-test('system locale selects Russian and unsupported locales fall back to Chinese', () => {
+test('system locale selects supported languages and unsupported locales fall back to English', () => {
   assert.equal(resolveAppLocale('ru'), 'ru');
   assert.equal(resolveAppLocale('ru-RU'), 'ru');
   assert.equal(resolveAppLocale('zh-CN'), 'zh-CN');
   assert.equal(resolveAppLocale('en-US'), 'en');
   assert.equal(resolveAppLocale('en-GB'), 'en');
-  assert.equal(resolveAppLocale('fr-FR'), 'zh-CN');
-  assert.equal(resolveAppLocale(''), 'zh-CN');
+  assert.equal(resolveAppLocale('fr-FR'), 'en');
+  assert.equal(resolveAppLocale(''), 'en');
   assert.equal(resolveAppLocale('en-US', 'ru'), 'ru');
   assert.equal(resolveAppLocale('ru-RU', 'zh-CN'), 'zh-CN');
   assert.equal(resolveAppLocale('ru-RU', 'en'), 'en');
