@@ -28,6 +28,25 @@ pub struct OAuthClientConfig {
 }
 
 impl OAuthClientConfig {
+    pub fn new(client_id: String, client_secret: String) -> Self {
+        Self {
+            client_id,
+            client_secret,
+        }
+    }
+
+    pub fn from_optional(client_id: Option<String>, client_secret: Option<String>) -> Self {
+        let fallback = Self::from_environment();
+        Self {
+            client_id: client_id
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or(fallback.client_id),
+            client_secret: client_secret
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or(fallback.client_secret),
+        }
+    }
+
     pub fn from_environment() -> Self {
         Self {
             client_id: std::env::var("CODEX_SWITCHER_ANTIGRAVITY_CLIENT_ID")
@@ -72,6 +91,8 @@ pub struct AntigravityCredential {
     pub refresh_token: String,
     pub expires_at: DateTime<Utc>,
     pub project_id: String,
+    pub oauth_client_id: String,
+    pub oauth_client_secret: String,
 }
 
 impl AntigravityCredential {
@@ -80,6 +101,10 @@ impl AntigravityCredential {
             "provider": "antigravity",
             "email": self.email,
             "project_id": self.project_id,
+            "oauth_client": {
+                "client_id": self.oauth_client_id,
+                "client_secret": self.oauth_client_secret,
+            },
             "tokens": {
                 "access_token": self.access_token,
                 "refresh_token": self.refresh_token,
@@ -304,6 +329,8 @@ pub async fn complete_credential(
         refresh_token,
         expires_at: Utc::now() + Duration::seconds(tokens.expires_in),
         project_id,
+        oauth_client_id: config.client_id.clone(),
+        oauth_client_secret: config.client_secret.clone(),
     })
 }
 
