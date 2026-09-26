@@ -479,6 +479,20 @@ mod tests {
     }
 
     #[test]
+    fn discovers_installed_antigravity_oauth_client_from_artifact() {
+        let artifact = b"prefix 123456-demo_client.apps.googleusercontent.com middle GOCSPX-abcdefghijklmnopqrstuvwxyz12 suffix";
+        let config = OAuthClientConfig::parse_installed_artifact(artifact).unwrap();
+        assert_eq!(
+            config.client_id,
+            "123456-demo_client.apps.googleusercontent.com"
+        );
+        assert_eq!(
+            config.client_secret,
+            "GOCSPX-abcdefghijklmnopqrstuvwxyz12"
+        );
+    }
+
+    #[test]
     fn extracts_project_id_from_supported_shapes() {
         assert_eq!(
             extract_project_id(&json!({"projectId":"p1"})).as_deref(),
