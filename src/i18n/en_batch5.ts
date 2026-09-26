@@ -160,9 +160,7 @@ export const enBatch5 = [
   ['已合并 ', 'Merged '],
   ['从 Server 同步所有 token', 'Sync all tokens from Server'],
   ['已写 auth.json', 'auth.json written'],
-  ['✅ 修复成功！\\n\\n现在请尝试重新打开 Codex App。', '✅ Fix successful!
-
-Now try reopening Codex App.'],
+  ['✅ 修复成功！\\n\\n现在请尝试重新打开 Codex App。', '✅ Fix successful!\\n\\nNow try reopening Codex App.'],
   ['保存中...', 'Saving...'],
   ['保存设置', 'Save Settings'],
   ['client 模式：保活由 Server 负责，本机已强制关闭（避免双路刷新撞飞 refresh_token）', 'Client mode: keepalive is handled by Server; local keepalive is forcibly disabled to avoid double-refresh invalidating refresh_token'],
